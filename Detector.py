@@ -22,7 +22,7 @@ DURACION = 5
 
 boton_reiniciar   = (50, 650, 150, 50)
 boton_guardar     = (250, 650, 150, 50)
-boton_actualizar  = (450, 650, 150, 50)
+
 
 pokemon_actuales = {}  # ahora guarda {'img':..., 'nombre':..., 'rect':(px,py,w,h)}
 confeti_coords = []
@@ -30,16 +30,40 @@ confeti_anim = 0
 fadein_frames = 15
 
 def normalizar_nombre_para_url(nombre):
-    # Normaliza acentos y caracteres especiales, deja sólo a-z, 0-9 y guiones
-    nombre_ascii = unicodedata.normalize('NFKD', nombre).encode('ascii','ignore').decode('ascii')
-    nombre_limpio = nombre_ascii.lower().replace(' ', '-')
-    nombre_limpio = re.sub(r'[^a-z0-9\-]', '', nombre_limpio)
-    return nombre_limpio
+    # Normaliza acentos y caracteres especiales, maneja símbolos y limpia puntuación
+    s = unicodedata.normalize('NFKD', nombre).encode('ascii', 'ignore').decode('ascii')
+    s = s.lower().strip()
+    # Mapear caracteres de género si aparecen escritos
+    s = s.replace('♀', '-f').replace('♂', '-m')
+    # Eliminar apóstrofes y caracteres indeseados
+    s = re.sub(r"[\'\u2019\.\:\,]", '', s)
+    # Mantener letras, números, espacios y guiones
+    s = re.sub(r'[^a-z0-9\s\-]', '', s)
+    s = s.replace('_', ' ')
+    s = re.sub(r'\s+', '-', s.strip())
+    s = re.sub(r'-+', '-', s)
+    # Ajustes especiales comunes en pokemondb
+    special_map = {
+        "farfetchd": "farfetchd",
+        "farfetch": "farfetchd",
+        "mr-mime": "mr-mime",
+        "mime-jr": "mime-jr",
+        "type-null": "type-null",
+        "ho-oh": "ho-oh",
+        "porygon-z": "porygon-z",
+        "nidoran-f": "nidoran-f",
+        "nidoran-m": "nidoran-m",
+        "flabebe": "flabebe"
+    }
+    # algunos nombres pueden incluir guiones dobles por la limpieza, normalizar
+    if s in special_map:
+        return special_map[s]
+    return s
 
 def abrir_pokedex(nombre_pokemon):
     slug = normalizar_nombre_para_url(nombre_pokemon)
     url = f"https://pokemondb.net/pokedex/{slug}"
-    print(f"Abrir Pokédex: {url}")
+    print(f"Abrir Pokédex: {url}  (nombre: '{nombre_pokemon}' -> slug: '{slug}')")
     try:
         webbrowser.open(url)
     except Exception as e:
@@ -48,10 +72,8 @@ def abrir_pokedex(nombre_pokemon):
 def click_event(event, x, y, flags, param):
     global inicio, foto_tomada, frame_final, pokemon_actuales, confeti_coords, confeti_anim
     if event == cv2.EVENT_LBUTTONDOWN:
-        # Botones
         bx, by, bw, bh = boton_reiniciar
         bx2, by2, bw2, bh2 = boton_guardar
-        bx3, by3, bw3, bh3 = boton_actualizar
 
         # Primero: comprobar si se clickeó sobre alguna imagen de Pokémon
         for i, info in list(pokemon_actuales.items()):
@@ -76,10 +98,6 @@ def click_event(event, x, y, flags, param):
                 nombre_archivo = f"foto_pokemon_{int(time.time())}.png"
                 cv2.imwrite(nombre_archivo, frame_final)
                 print(f"Foto guardada como {nombre_archivo}")
-        elif foto_tomada and bx3 <= x <= bx3 + bw3 and by3 <= y <= by3 + bh3:
-            inicio = time.time()
-            foto_tomada = False
-            print("Actualizar presionado")
 
 cv2.namedWindow("Pokemon filtro estilo TikTok", cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("Pokemon filtro estilo TikTok", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
@@ -112,7 +130,7 @@ while True:
         info = pokemon_actuales[i]
         img, nombre = info['img'], info['nombre']
         # Guardar rectángulo sólo si vamos a dibujar la imagen (dentro del frame)
-        if px >= 0 and py >= 0 and px + w <= frame.shape[1] and py + h <= frame.shape[0]:
+        if px >= 0 and py >= 0 and px + w <= frame.shape[1] and py + h <= frame.shape[0] and img is not None:
             # Actualizar la rect para poder detectar clicks
             pokemon_actuales[i]['rect'] = (px, py, w, h)
             if not foto_tomada:
@@ -159,7 +177,7 @@ while True:
 
     draw_button(frame, boton_reiniciar, "Reiniciar", (0,0,255))
     draw_button(frame, boton_guardar, "Guardar", (0,128,0))
-    draw_button(frame, boton_actualizar, "Actualizar", (0,128,200))
+
 
     cv2.imshow("Pokemon filtro estilo TikTok", frame)
 

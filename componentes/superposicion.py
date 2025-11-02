@@ -1,4 +1,3 @@
-# ...existing code...
 import cv2
 import hashlib
 
@@ -58,4 +57,3 @@ def pokemon_for_face(rect, pokemon_imgs, pokemon_nombres):
     idx = int(hsh, 16) % len(pokemon_imgs)
     nombre = pokemon_nombres[idx] if idx < len(pokemon_nombres) else "Desconocido"
     return idx, pokemon_imgs[idx], nombre
-# ...existing code...
