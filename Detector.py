@@ -9,7 +9,7 @@ from componentes.superposicion import overlay_image_fade, pokemon_for_face
 from componentes.interfaz import draw_button, draw_countdown, draw_pokemon_name
 from componentes.utilidades import cargar_imagenes_pokemon
 from componentes.confeti import generar_confeti, animar_confeti, dibujar_confeti
-
+from componentes.compartir import guardar_foto, subir_a_drive, generar_qr, mostrar_qr
 # === Inicialización ===
 face_cascade = cargar_cascade()
 pokemons_dir = "Pokemon"
@@ -30,6 +30,9 @@ confeti_anim = 0
 fadein_frames = 15
 
 def normalizar_nombre_para_url(nombre):
+    # Quitar sufijos "shiny", "variocolor" o similares
+    nombre = nombre.lower().replace('shiny', '').replace('variocolor', '').strip()
+    # ...el resto de la normalización...
     # Normaliza acentos y caracteres especiales, maneja símbolos y limpia puntuación
     s = unicodedata.normalize('NFKD', nombre).encode('ascii', 'ignore').decode('ascii')
     s = s.lower().strip()
@@ -73,7 +76,7 @@ def click_event(event, x, y, flags, param):
     global inicio, foto_tomada, frame_final, pokemon_actuales, confeti_coords, confeti_anim
     if event == cv2.EVENT_LBUTTONDOWN:
         bx, by, bw, bh = boton_reiniciar
-        bx2, by2, bw2, bh2 = boton_guardar
+        bx2, by2, bw2, bh2 = boton_guardar  # <-- Agrega esta línea para definir bx2, by2, bw2, bh2
 
         # Primero: comprobar si se clickeó sobre alguna imagen de Pokémon
         for i, info in list(pokemon_actuales.items()):
@@ -95,9 +98,11 @@ def click_event(event, x, y, flags, param):
             print("Reiniciado")
         elif foto_tomada and bx2 <= x <= bx2 + bw2 and by2 <= y <= by2 + bh2:
             if frame_final is not None:
-                nombre_archivo = f"foto_pokemon_{int(time.time())}.png"
-                cv2.imwrite(nombre_archivo, frame_final)
-                print(f"Foto guardada como {nombre_archivo}")
+                nombre_foto = guardar_foto(frame_final)
+                url = subir_a_drive(nombre_foto)
+                nombre_qr = nombre_foto.replace('.png', '_qr.png')
+                generar_qr(url, nombre_qr)
+                mostrar_qr(nombre_qr)
 
 cv2.namedWindow("Pokemon filtro estilo TikTok", cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("Pokemon filtro estilo TikTok", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
